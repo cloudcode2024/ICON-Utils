@@ -21,7 +21,8 @@ ARRAYNEWLANGS.forEach((NEWLANG) => {
             wic_obj_base_column_render_locale.locale,
             wic_obj_base_column_render_locale.render_code, 
             wic_obj_base_column_render_locale.render_data,
-            wic_obj_base_column_render_locale.render_desc
+            wic_obj_base_column_render_locale.render_desc,
+            wic_obj_base_column_render_locale.render_info
           FROM wic_obj_base_column_render_locale
          WHERE wic_obj_base_column_render_locale.locale = 'es' AND 
                 NOT EXISTS (SELECT rowid 
