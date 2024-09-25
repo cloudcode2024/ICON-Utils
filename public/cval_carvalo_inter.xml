@@ -1,0 +1,573 @@
+<!-- ========================================================================== -->
+<!--                                                                            -->
+<!--    cval_carvalo_inter                                                      -->
+<!--                                                                            -->
+<!--    Proceso para la generación de la provision de intereses de las carteras -->
+<!--    de valores.                                                             -->
+<!--                                                                            -->
+<!--  ========================================================================= -->
+<xsql-script name='cval_carvalo_inter'>
+    <test unit='1'>
+        <arg name='p_codcar'  value='CNBE' />
+        <arg name='p_codval'  value='*' />
+        <arg name='p_fecha'   value='31-10-2005' />
+    </test>
+
+    <args>
+        <arg name='p_codcar' />
+        <arg name='p_codval' />
+        <arg name='p_fecha' type='date'/>
+    </args>
+
+    <body>
+
+        <!-- Datos por defecto del usuario -->
+        <execute-procedure name='cdefcont_defaults'>
+            <in>
+                <string>cval_opercar</string>
+                <number>0</number>
+            </in>
+            <out>
+                <var name='cdefcont_diario'/>
+                <var name='cdefcont_proyec'/>
+                <var name='cdefcont_seccio'/>
+                <var name='cdefcont_jusser'/>
+                <var name='cdefcont_docser'/>
+                <var name='cdefcont_codcon'/>
+                <var name='cdefcont_contab'/>
+                <var name='cdefcont_conint'/>
+                <var name='cdefcont_sistem'/>
+                <var name='cdefcont_fecini'/>
+                <var name='cdefcont_fecfin'/>
+            </out>
+        </execute-procedure>
+
+        <if>
+            <expr>
+                <isnull><cdefcont_diario/></isnull>
+            </expr>
+            <then>
+                <exception>
+                    
+                </exception>
+            </then>
+        </if>
+
+
+        <!-- Verificamos operaciones anteriores pendientes de contabilizar -->
+        <select prefix='m_'>
+            <columns>COUNT(*) count</columns>
+            <from table='cval_opercar'/>
+            <where>cval_opercar.codcar <matches><p_codcar/></matches>
+               AND cval_opercar.codval <matches><p_codval/></matches>
+               AND cval_opercar.fecope &lt;= <p_fecha/>
+               AND cval_opercar.estado != 'C'
+            </where>
+        </select>
+        
+        <if>
+            <expr><gt><m_count/>0</gt></expr>
+            <then>
+                <exception>
+                    OPERACIONES CON FECHA ANTERIOR PENDIENTES DE CONTABILIZAR.
+                </exception>
+            </then>
+        </if>
+
+        <!-- Generamos registro del proceso y vinculamos los apuntes a este registro -->
+        <insert table='cenllote'>
+            <column name='loteid'>0</column>
+            <column name='procname'><string>cval_carvalo_inter</string></column>
+            <column name='tabname'><string>cval_prohist</string></column>
+            <column name='colname'>procid</column>
+            <column name='modcon'>2</column>
+        </insert>
+        <set name='ccon_interfase_loteid'><sqlca.serial /></set>
+
+        <set name='cval_prohist_procid'>
+            <insert table='cval_prohist'>
+                <column name='procid'>0</column>
+                <column name='apteid'><ccon_interfase_loteid/></column>
+                <column name='codcar'><p_codcar/></column>
+                <column name='codval'><p_codval/></column>
+                <column name='fecpro'><p_fecha/></column>
+                <column name='tippro'>F</column>
+            </insert>
+        </set>
+        
+        <insert table='cenlsubs'>
+            <column name='procid'><cval_prohist_procid /></column>
+            <column name='loteid'><ccon_interfase_loteid/></column>
+        </insert>
+
+        <foreach>
+            <select prefix='cval_carvalo_' oracle='ansi'>
+                <columns>
+                    cval_carvalo.operid, cval_carvalo.empcode, cval_carvalo.codcar, cval_carvalo.codval,
+                    cval_carvalo.feccom, cval_carvalo.numtit, cval_carvalo.moneda, cval_carvalo.precio,
+                    cval_carvalo.totdiv, cval_carvalo.totloc, cval_carvalo.totnom, cval_carvalo.totact,
+                    cval_carvalo.imptot, cval_carvalo.fecemi, cval_carvalo.fecini, cval_carvalo.fecfin,
+                    cval_carvalo.tipint, cval_carvalo.tippag, cval_carvalo.fecabo, cval_carvalo.impabo,
+                    cval_carvalo.fecpro, cval_carvalo.imppro, cval_carvalo.fecint, cval_carvalo.impint,
+                    cval_carvalo.fecven, cval_carvalo.impven,
+                    cval_tipcart.nomcar, cval_tipcart.empcode, cval_tipcart.proyec, cval_tipcart.seccio,
+                    cval_tipcart.sistem, cval_tipcart.codagr,  cval_agrcart.cosmed,
+                    cval_carvalc.numtit carvalc_numtit, cval_carvalc.impmed, cval_carvalc.impcos,
+                    cval_valores.nomval, cval_valores.tipren,  cval_valores.codcon,
+                    icon_get_ctanem(cval_carvalo.empcode,cval_valores.ctainv) valores_ctainv,
+                    icon_get_ctanem(cval_carvalo.empcode,cval_valctas.ctaire) ctaire,
+                    icon_get_ctanem(cval_carvalo.empcode,cval_valctas.ctainv) ctainv,
+                    icon_get_ctanem(cval_carvalo.empcode,cval_valctas.ctaben) ctaben,
+                    icon_get_ctanem(cval_carvalo.empcode,cval_valctas.ctaper) ctaper,
+                    icon_get_ctanem(cval_carvalo.empcode,cval_valctas.ctaprd) ctaprd,
+                    icon_get_ctanem(cval_carvalo.empcode,cval_valctas.ctapri) ctapri,
+                    icon_get_ctanem(cval_carvalo.empcode,cval_valctas.ctadpc) ctadpc,
+                    icon_get_ctanem(cval_carvalo.empcode,cval_valctas.ctadnc) ctadnc,
+                    icon_get_ctanem(cval_carvalo.empcode,cval_valctas.ctaret) ctaret,
+                    icon_get_ctanem(cval_carvalo.empcode,cval_valctas.ctagas) ctagas
+                </columns>
+                <from table='cval_carvalo'>
+                    <join table='cval_valores'>
+                        <on>cval_carvalo.codval = cval_valores.codigo</on>
+                    </join>
+                    <join table='cval_valctas' type='left'>
+                        <on>cval_valores.codcon = cval_valctas.codcon</on>
+                    </join>
+                    <join table='cval_tipcart' type='left'>
+                        <on>cval_carvalo.codcar = cval_tipcart.codcar</on>
+                        <on>cval_carvalo_c.operid = cval_carvalo.operid</on>
+                        <join table='cval_carvalo' alias='cval_carvalo_c'>
+                        </join>
+                        <join table='cval_carvalc' type='left'>
+                            <on>cval_tipcart.codagr = cval_carvalc.codagr</on>
+                            <on>cval_carvalo_b.codval = cval_carvalc.codval</on>
+                            <on>cval_carvalo_b.operid = cval_carvalo_c.operid</on>
+                            <join table='cval_carvalo' alias='cval_carvalo_b'>
+                            </join>
+                        </join>
+                        <join table='cval_agrcart' type='left'>
+                            <on>cval_tipcart.codagr = cval_agrcart.codagr</on>
+                        </join>
+                    </join>
+                </from>
+                <where>cval_carvalo.numtit > 0
+                   AND cval_carvalo.feccom &lt;= <p_fecha/>
+                   AND (cval_carvalo.fecabo &lt;= <p_fecha/> OR cval_carvalo.fecabo IS NULL)
+                   AND cval_carvalo.codcar <matches><p_codcar/></matches>
+                   AND cval_carvalo.codval <matches><p_codval/></matches>
+                   AND cval_valores.tipren = 'F'
+                </where>
+                <order>fecpro, operid</order>
+            </select>
+            <do>
+
+                <set name='cval_tipcart_nomcar'><cval_carvalo_nomcar/></set>
+                <set name='cval_tipcart_empcode'><cval_carvalo_empcode/></set>
+                <set name='cval_tipcart_proyec'><cval_carvalo_proyec/></set>
+                <set name='cval_tipcart_seccio'><cval_carvalo_seccio/></set>
+                <set name='cval_tipcart_sistem'><cval_carvalo_sistem/></set>
+                <set name='cval_tipcart_codagr'><cval_carvalo_codagr/></set>
+                
+                <set name='cval_agrcart_cosmed'><cval_carvalo_cosmed/></set>
+                
+                <set name='cval_carvalc_numtit'><cval_carvalo_carvalc_numtit/></set>
+                <set name='cval_carvalc_impmed'><cval_carvalo_impmed/></set>
+                <set name='cval_carvalc_impcos'><cval_carvalo_impcos/></set>
+
+                <set name='cval_valores_nomval'><cval_carvalo_nomval/></set>
+                <set name='cval_valores_tipren'><cval_carvalo_tipren/></set>
+                <set name='cval_valores_ctainv'><cval_carvalo_valores_ctainv/></set>
+
+                <!-- Consideramos las cuentas contables particulares para el valor-cartera -->
+                <select prefix='cval_valctas_'>
+                    <columns>
+                        icon_get_ctanem(<cval_carvalo_empcode/>,cval_valctas.ctaire) ctaire,
+                        icon_get_ctanem(<cval_carvalo_empcode/>,cval_valctas.ctainv) ctainv,
+                        icon_get_ctanem(<cval_carvalo_empcode/>,cval_valctas.ctaben) ctaben,
+                        icon_get_ctanem(<cval_carvalo_empcode/>,cval_valctas.ctaper) ctaper,
+                        icon_get_ctanem(<cval_carvalo_empcode/>,cval_valctas.ctaprd) ctaprd,
+                        icon_get_ctanem(<cval_carvalo_empcode/>,cval_valctas.ctapri) ctapri,
+                        icon_get_ctanem(<cval_carvalo_empcode/>,cval_valctas.ctadpc) ctadpc,
+                        icon_get_ctanem(<cval_carvalo_empcode/>,cval_valctas.ctadnc) ctadnc,
+                        icon_get_ctanem(<cval_carvalo_empcode/>,cval_valctas.ctaret) ctaret,
+                        icon_get_ctanem(<cval_carvalo_empcode/>,cval_valctas.ctagas) ctagas
+                    </columns>
+                    <from table='cval_valctas'>
+                        <join table='cval_valcont'>
+                            <on>cval_valctas.codcon = cval_valcont.codcon</on>
+                        </join>
+                    </from>
+                    <where>
+                        cval_valcont.codcar = <cval_carvalo_codcar/>
+                    AND cval_valcont.codval = <cval_carvalo_codval/>
+                    </where>
+                </select>
+
+                <set name='cval_carvalo_ctaire'><ifnull><cval_valctas_ctaire/><cval_carvalo_ctaire/></ifnull></set>
+                <set name='cval_carvalo_ctainv'><ifnull><cval_valctas_ctainv/><cval_carvalo_ctainv/></ifnull></set>
+                <set name='cval_carvalo_ctaben'><ifnull><cval_valctas_ctaben/><cval_carvalo_ctaben/></ifnull></set>
+                <set name='cval_carvalo_ctaper'><ifnull><cval_valctas_ctaper/><cval_carvalo_ctaper/></ifnull></set>
+                <set name='cval_carvalo_ctaprd'><ifnull><cval_valctas_ctaprd/><cval_carvalo_ctaprd/></ifnull></set>
+                <set name='cval_carvalo_ctapri'><ifnull><cval_valctas_ctapri/><cval_carvalo_ctapri/></ifnull></set>
+                <set name='cval_carvalo_ctadpc'><ifnull><cval_valctas_ctadpc/><cval_carvalo_ctadpc/></ifnull></set>
+                <set name='cval_carvalo_ctadnc'><ifnull><cval_valctas_ctadnc/><cval_carvalo_ctadnc/></ifnull></set>
+                <set name='cval_carvalo_ctaret'><ifnull><cval_valctas_ctaret/><cval_carvalo_ctaret/></ifnull></set>
+                <set name='cval_carvalo_ctagas'><ifnull><cval_valctas_ctagas/><cval_carvalo_ctagas/></ifnull></set>
+                <set name='cval_valores_ctainv'><ifnull><cval_valores_ctainv/><cval_carvalo_ctainv/></ifnull></set>
+
+                <!-- Carga valores que necesita de cempresa (cempresa.ctaaux) -->
+                <select prefix='cempresa_'>
+                    <columns>ctaaux</columns>
+                    <from table='cempresa'/>
+                    <where>empcode = <cval_tipcart_empcode/></where>
+                </select>
+
+                <!-- Redondeo moneda local de la empresa -->
+                <set name='m_reddiv' type='integer'>
+                    <execute-function name='icon_get_divred' type='integer'>
+                        <execute-function name='icon_get_moneda'>
+                            <cval_tipcart_empcode/>
+                        </execute-function>
+                    </execute-function>
+                </set>
+
+                <!-- Cargamos datos comunes de todas las operaciones -->
+                <set name='ccon_interfase_numlot'><cval_prohist_procid /></set>
+                <set name='ccon_interfase_doclot'>V</set>
+                <set name='ccon_interfase_tipcla'>cval_prohist</set>
+
+                <set name='ccon_interfase_codigo'>cval_carvalo_int</set>
+                <set name='ccon_interfase_numsec'>10</set>
+                <set name='ccon_interfase_fecha'  ><p_fecha /></set>
+                <set name='ccon_interfase_empcode'><cval_tipcart_empcode /></set>
+                <set name='ccon_interfase_proyec'><cval_tipcart_proyec /></set>
+                <set name='ccon_interfase_seccio'><cval_tipcart_seccio /></set>
+                <set name='ccon_interfase_jusser'>
+                    <execute-function name='icon_nxt_jusemp'>
+                        <string>EF</string>
+                        <cval_tipcart_empcode/>
+                        <cdefcont_jusser/>
+                        <p_fecha/>
+                        <string>N</string>
+                    </execute-function>
+                </set>
+                <set name='ccon_interfase_docser'><ccon_interfase_jusser /></set>
+                <set name='ccon_interfase_moneda'>
+                    <execute-function name='icon_get_moneda'>
+                        <cval_tipcart_empcode/>
+                    </execute-function>
+                </set>
+                <set name='ccon_interfase_cambio'>1</set>
+
+                <set name='ccon_interfase_tabori'>cval_prohist</set>
+                <set name='ccon_interfase_tabid'><cval_prohist_procid /></set>
+
+                <set name='ccon_interfase_field01'><cdefcont_diario/></set>     <!-- Diario -->
+                <set name='ccon_interfase_field02'><cdefcont_codcon/></set>     <!-- cdefcont.codcon -->
+                <set name='ccon_interfase_field03'><cval_tipcart_sistem/></set> <!-- Sistema -->
+                <set name='ccon_interfase_field04'><cempresa_ctaaux/></set>     <!-- Cuenta Auxiliar-->
+                <set name='ccon_interfase_field05'><cval_carvalo_codval/></set> <!-- Código Valor-->
+                <set name='ccon_interfase_field06'><cval_valores_nomval/></set> <!-- Descripcion Valor-->
+                <set name='ccon_interfase_field07'><cval_carvalo_codcar/></set> <!-- Código Cartera-->
+                <set name='ccon_interfase_field08'><cval_tipcart_nomcar/></set> <!-- Descripcion Cartera-->
+                <set name='ccon_interfase_field09'><cval_carvalo_moneda/></set> <!-- Moneda de la cartera -->
+                <set name='ccon_interfase_field10'><cval_valores_ctainv/></set> <!-- Subcuenta inversion-->
+                <set name='ccon_interfase_field11'><cval_carvalo_ctaprd/></set> <!-- Subcuenta provisiones-->
+                <set name='ccon_interfase_field12'><cval_carvalo_ctaper/></set> <!-- Subcuenta Perdida provisiones-->
+                <set name='ccon_interfase_field13'><cval_carvalo_ctaire/></set> <!-- Subcuenta inversion regularizacion-->
+                <set name='ccon_interfase_field14'><cval_carvalo_ctaben/></set> <!-- Subcuenta Beneficio o perdida-->
+                <set name='ccon_interfase_field15'><cval_carvalo_ctapri/></set> <!-- Subcuenta Intereses-->
+
+                <if>
+                    <expr>
+                        <or> <ne><cval_carvalo_impven/>0</ne>  <ne><cval_carvalo_impint/>0</ne> </or>
+                    </expr>
+                    <then>
+                        <set name='ccon_interfase_impor07'><cval_carvalo_impven/></set>
+                        <set name='ccon_interfase_impor08'><cval_carvalo_impint/></set>
+                        <set name='ccon_interfase_impor09'><add><cval_carvalo_impven/><cval_carvalo_impint/></add></set>
+
+                        <insert table='cval_carhist'>
+                            <column name='apteid'><ccon_interfase_loteid/></column>
+                            <column name='procid'><cval_prohist_procid/></column>
+                            <column name='codcar'><cval_carvalo_codcar/></column>
+                            <column name='codval'><cval_carvalo_codval/></column>
+                            <column name='fecope'><p_fecha/></column>
+                            <column name='tipope'>V</column>
+                            <column name='imptot'><neg><cval_carvalo_impven/></neg></column>
+                        </insert>
+                        <insert table='cval_carhist'>
+                            <column name='apteid'><ccon_interfase_loteid/></column>
+                            <column name='procid'><cval_prohist_procid/></column>
+                            <column name='codcar'><cval_carvalo_codcar/></column>
+                            <column name='codval'><cval_carvalo_codval/></column>
+                            <column name='fecope'><p_fecha/></column>
+                            <column name='tipope'>P</column>
+                            <column name='imptot'><neg> <cval_carvalo_impven/></neg></column>
+                        </insert>
+                    </then>
+                    <else>
+                        <set name='ccon_interfase_impor07'>0</set>
+                        <set name='ccon_interfase_impor08'>0</set>
+                        <set name='ccon_interfase_impor09'>0</set>
+                    </else>
+                </if>
+
+                <set name='m_fecabo'><ifnull><cval_carvalo_fecabo/><cval_carvalo_fecini/></ifnull></set>
+                <set name='m_fec_ult_cob'><m_fecabo/></set>
+
+                <if>
+                    <expr><isnull><m_fec_ult_cob/></isnull></expr>
+                    <then>
+                        <exception>
+                            cval_carvalo_inter: FECHA DEVENGO INTERESES NO INFORMADA.
+                        </exception>
+                    </then>
+                </if>
+                <if>
+                    <expr><gt><m_fec_ult_cob/><p_fecha/></gt></expr>
+                    <then>
+                        <foreach.continue/>
+                    </then>
+                </if>
+
+
+                <switch name='cval_carvalo_tippag'>
+                    <case value='A'>
+                        <set name='m_period'>12</set>
+                    </case>
+                    <case value='S'>
+                        <set name='m_period'>6</set>
+                    </case>
+                    <case value='T'>
+                        <set name='m_period'>3</set>
+                    </case>
+                    <default>
+                        <set name='m_period'>1</set>
+                    </default>
+                </switch>
+
+                <set name='m_year'><date.year><m_fec_ult_cob/></date.year></set>
+                <set name='m_month'><date.month><m_fec_ult_cob/></date.month></set>
+                <set name='m_fec_bas_int'><m_fec_ult_cob/></set>
+
+                <for name='x' start='1' end='20'>
+                    <do>
+                        <set name='m_month'><add><m_month/><m_period/></add></set>
+                        <if>
+                            <expr><gt><m_month/>12</gt></expr>
+                            <then>
+                                <set name='m_year'><add><m_year/>1</add></set>
+                                <set name='m_month'><sub><m_month/>12</sub></set>
+                            </then>
+                        </if>
+
+                        <if>
+                            <expr>
+                                <eq><m_month/>2</eq>
+                                <and/>
+                                <gt><date.day><m_fec_ult_cob/></date.day>28</gt>
+                            </expr>
+
+                            <then>
+                                <set name='m_day'>28</set>
+                            </then>
+
+                            <else>
+                                <if>
+                                    <expr>
+                                        <expr>
+                                            <eq><m_month/>4</eq>
+                                        <or/>
+                                            <eq><m_month/>6</eq>
+                                        <or/>
+                                            <eq><m_month/>9</eq>
+                                        <or/>
+                                            <eq><m_month/>11</eq>
+                                        </expr>
+                                        <and/>
+                                        <gt><date.day><m_fec_ult_cob/></date.day>30</gt>
+                                    </expr>
+                                    <then>
+                                        <set name='m_day'>30</set>
+                                    </then>
+                                    <else>
+                                        <set name='m_day'><date.day><m_fec_ult_cob/></date.day></set>
+                                    </else>
+                                </if>
+                            </else>
+                        </if>
+                        
+                        <if>
+                            <expr>
+                                <gt>
+                                    <date.mdy>
+                                        <m_month/>
+                                        <m_day/>
+                                        <m_year/>
+                                    </date.mdy>
+                                    <p_fecha/>
+                                </gt>
+                            </expr>
+                            <then>
+                                <for.exit/>
+                            </then>
+                        </if>
+
+                        <set name='m_fec_bas_int'><date.mdy><m_month/><m_day/><m_year/></date.mdy></set>
+                    </do>
+                </for>
+
+                <if>
+                    <expr><gt><m_fec_bas_int/><cval_carvalo_fecfin/></gt></expr>
+                    <then>
+                        <foreach.continue/>
+                    </then>
+                </if>
+
+                <set name='m_interes_venc'>
+                    <math.round>
+                        <div>
+                            <mul>
+                                <cval_carvalo_totnom/>
+                                <div>
+                                    <cval_carvalo_tipint/>
+                                    100
+                                </div>
+                                <sub>
+                                    <m_fec_bas_int/>
+                                    <m_fecabo/>
+                                </sub>
+                            </mul>
+                            365
+                        </div>
+                        <m_reddiv/>
+                    </math.round>
+                </set>
+                <set name='m_interes_prov'>
+                    <math.round>
+                        <div>
+                            <mul>
+                                <cval_carvalo_totnom/>
+                                <div>
+                                    <cval_carvalo_tipint/>
+                                    100
+                                </div>
+                                <sub>
+                                    <p_fecha/>
+                                    <m_fec_bas_int/>
+                                </sub>
+                            </mul>
+                            365
+                        </div>
+                        <m_reddiv/>
+                    </math.round>
+                 </set>
+
+                <set name='ccon_interfase_impor01'><cval_carvalo_numtit/></set>
+                <set name='ccon_interfase_impor02'><m_interes_venc/></set>
+                <set name='ccon_interfase_impor03'><m_interes_prov/></set>
+                <set name='ccon_interfase_impor04'><add><m_interes_venc/><m_interes_prov/></add></set>
+                <set name='ccon_interfase_impor05'><sub><m_fec_bas_int/><m_fecabo/></sub></set>
+                <set name='ccon_interfase_impor06'><sub><p_fecha/><m_fec_bas_int/></sub></set>
+                <set name='ccon_interfase_fecha01'><m_fecabo/></set>
+                <set name='ccon_interfase_fecha02'><m_fec_bas_int/></set>
+                <set name='ccon_interfase_fecha03'><p_fecha/></set>
+                <insert table='ccon_interfase' prefix='ccon_interfase_'/>
+
+                <if>
+                    <expr><ne><m_interes_venc/>0</ne></expr>
+                    <then>
+                        <insert table='cval_carhist'>
+                            <column name='apteid'><ccon_interfase_loteid/></column>
+                            <column name='procid'><cval_prohist_procid/></column>
+                            <column name='codcar'><cval_carvalo_codcar/></column>
+                            <column name='codval'><cval_carvalo_codval/></column>
+                            <column name='fecope'><p_fecha/></column>
+                            <column name='tipope'>V</column>
+                            <column name='imptot'><m_interes_venc/></column>
+                        </insert>
+                   </then>
+                </if>
+               <if>
+                    <expr><ne><m_interes_prov/>0</ne></expr>
+                    <then>
+                        <insert table='cval_carhist'>
+                            <column name='apteid'><ccon_interfase_loteid/></column>
+                            <column name='procid'><cval_prohist_procid/></column>
+                            <column name='codcar'><cval_carvalo_codcar/></column>
+                            <column name='codval'><cval_carvalo_codval/></column>
+                            <column name='fecope'><p_fecha/></column>
+                            <column name='tipope'>P</column>
+                            <column name='imptot'><m_interes_prov/></column>
+                        </insert>
+                    </then>
+                </if>
+
+                <!--  -->
+                <if>
+                    <expr><eq><m_interes_venc/>0</eq></expr>
+                    <then>
+                        <null name='m_fec_bas_int'/> <!-- Limpia la fecha de calculo en caso de que no hayan intereses vencidos -->
+                    </then>
+                </if>
+                <insert table='cval_carvalh'>
+                    <column name='histid'>0</column>
+                    <column name='cartid'><cval_carvalo_operid/></column>
+                    <column name='operid'><null/></column>
+                    <column name='procid'><cval_prohist_procid/></column>
+                    <column name='empcode'><cval_tipcart_empcode/></column>
+                    
+                    <column name='codcar'><cval_carvalo_codcar/></column>
+                    <column name='codval'><cval_carvalo_codval/></column>
+                    <column name='feccom'><cval_carvalo_feccom/></column>
+                    <column name='numtit'><cval_carvalo_numtit/></column>
+                    <column name='moneda'><cval_carvalo_moneda/></column>
+                    <column name='precio'><cval_carvalo_precio/></column>
+                    <column name='totdiv'><cval_carvalo_totdiv/></column>
+                    <column name='totloc'><cval_carvalo_totloc/></column>
+                    <column name='totnom'><cval_carvalo_totnom/></column>
+                    <column name='totact'><cval_carvalo_totact/></column>
+                    <column name='imptot'><cval_carvalo_imptot/></column>
+                    <column name='fecemi'><cval_carvalo_fecemi/></column>
+                    <column name='fecini'><cval_carvalo_fecini/></column>
+                    <column name='fecfin'><cval_carvalo_fecfin/></column>
+                    <column name='tipint'><cval_carvalo_tipint/></column>
+                    <column name='tippag'><cval_carvalo_tippag/></column>
+                    <column name='fecabo'><cval_carvalo_fecabo/></column>
+                    <column name='impabo'><cval_carvalo_impabo/></column>
+                    <column name='fecpro'><cval_carvalo_fecpro/></column>
+                    <column name='imppro'><cval_carvalo_imppro/></column>
+                    <column name='fecint'><cval_carvalo_fecint/></column>
+                    <column name='impint'><cval_carvalo_impint/></column>
+                    <column name='fecven'><cval_carvalo_fecven/></column>
+                    <column name='impven'><cval_carvalo_impven/></column>
+                </insert>
+                <update table='cval_carvalo'>
+                    <column name='impven'><m_interes_venc/></column>
+                    <column name='impint'><m_interes_prov/></column>
+                    <column name='fecven'><m_fec_bas_int/></column>
+                    <column name='fecint'><p_fecha/></column>
+                    <column name='user_updated'><system.user.getCode/></column>
+                    <column name='date_updated'><date.current/></column>
+                    <where>
+                        operid = <cval_carvalo_operid/>
+                    </where>
+                </update>
+            </do>
+        </foreach>
+
+        <if>
+            <expr><eq><cdefcont_conint/>1</eq></expr>
+            <then>
+                <call name='ccon_interfase_contab'>
+                    <number>0</number>      <!-- Ejecución modo online -->
+                    <number>1</number>      <!-- Borrado de registros al finalizar -->
+                    <ccon_interfase_numlot/>
+                    <ccon_interfase_doclot/>
+                    <ccon_interfase_tipcla/>
+                </call>
+            </then>
+        </if>
+    </body>
+</xsql-script>
