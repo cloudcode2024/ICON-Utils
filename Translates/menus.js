@@ -8,15 +8,18 @@ const ARRNEWLAN = ["en", "ca", "pt", "fr", "it", "de"];
 const USER_CODE = Ax.ext.user.getCode();
 const DATE_CURRENT = new Ax.util.Date();
 
+function translate(data, newlang) {
+  try {
+    return Ax.ext.google.translate.translateText("es", newlang, data) ?? "";
+  } catch (err) {
+    return "";
+  }
+}
+
+
 ARRNEWLAN.forEach((NEWLANG) => {
   console.log(`-----------------${NEWLANG}-----------------`);
-  function translate(data) {
-    try {
-      return Ax.ext.google.translate.translateText("es", NEWLANG, data) ?? "";
-    } catch (err) {
-      return "";
-    }
-  }
+  
 
   let mRsDetalle = Ax.db.executeQuery(`
        SELECT '${NEWLANG}' locale_tar,
@@ -39,7 +42,7 @@ ARRNEWLAN.forEach((NEWLANG) => {
       Ax.db.beginWork();
 
       if (data.menu_name) {
-        let desc_translate = translate(data.menu_name);
+        let desc_translate = translate(data.menu_name, NEWLANG);
         data.menu_name = desc_translate
           ? desc_translate[0].toUpperCase() + desc_translate.slice(1)
           : "";

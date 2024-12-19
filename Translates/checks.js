@@ -7,9 +7,9 @@ const ARRNEWLAN = ["en", "ca", "pt", "fr", "it", "de"];
 const USER_CODE = Ax.ext.user.getCode();
 const DATE_CURRENT = new Ax.util.Date();
 
-function translate(data){
+function translate(data, newlang){
     try{
-        return Ax.ext.google.translate.translateText('es', NEWLANG, data) ?? '';
+        return Ax.ext.google.translate.translateText('es', newlang, data) ?? '';
     } catch(err){
         return ''
     }
@@ -38,7 +38,7 @@ ARRNEWLAN.forEach(NEWLANG =>{
 
             if (!data.constraint_desc) return
 
-            let memo_translate = translate(data.constraint_desc).toString();
+            let memo_translate = translate(data.constraint_desc, NEWLANG).toString();
             data.constraint_desc = memo_translate[0].toUpperCase() + memo_translate.slice(1)
 
             Ax.db.insert('wic_obj_table_check_info', {

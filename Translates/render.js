@@ -7,15 +7,16 @@ const ARRAYNEWLANGS = ["en", "ca", "pt", "fr", "it", "de"];
 const USER_CODE = Ax.ext.user.getCode();
 const DATE_CURRENT = new Ax.util.Date();
 
-ARRAYNEWLANGS.forEach((NEWLANG) => {
-  function translate(data) {
-    try {
-      return Ax.ext.google.translate.translateText("es", NEWLANG, data) ?? "";
-    } catch (err) {
-      return "";
-    }
+function translate(data, newLang) {
+  try {
+    return Ax.ext.google.translate.translateText("es", newLang, data) ?? "";
+  } catch (err) {
+    return "";
   }
+}
 
+ARRAYNEWLANGS.forEach((NEWLANG) => {
+  
   let mRsDetalle = Ax.db.executeQuery(`
         SELECT '${NEWLANG}' locale_tar, 
             wic_obj_base_column_render_locale.locale,
@@ -38,12 +39,12 @@ ARRAYNEWLANGS.forEach((NEWLANG) => {
 
       if (!data.render_desc) return;
 
-      let memo_translate = translate(data.render_desc).toString();
+      let memo_translate = translate(data.render_desc, NEWLANG).toString();
       data.render_desc =
         memo_translate[0].toUpperCase() + memo_translate.slice(1);
 
       if (data.render_info) {
-        let desc_translate = translate(data.render_info);
+        let desc_translate = translate(data.render_info, NEWLANG);
         data.render_info = desc_translate
           ? desc_translate[0].toUpperCase() + desc_translate.slice(1)
           : "";

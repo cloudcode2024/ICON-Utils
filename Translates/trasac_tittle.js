@@ -7,9 +7,9 @@ const ARRNEWLAN = ["en", "ca", "pt", "fr", "it", "de"];
 const USER_CODE = Ax.ext.user.getCode();
 const DATE_CURRENT = new Ax.util.Date();
 
-function translate(data) {
+function translate(data, newLang) {
   try {
-    return Ax.ext.google.translate.translateText("es", NEWLANG, data) ?? "";
+    return Ax.ext.google.translate.translateText("es", newLang, data) ?? "";
   } catch (err) {
     return "";
   }
@@ -50,18 +50,18 @@ ARRNEWLAN.forEach((NEWLANG) => {
 
       if (!data.obj_head) return;
 
-      let memo_translate = translate(data.obj_head).toString();
+      let memo_translate = translate(data.obj_head, NEWLANG).toString();
       data.obj_head = memo_translate.toUpperCase();
 
       if (data.obj_memo) {
-        let desc_translate = translate(data.obj_memo);
+        let desc_translate = translate(data.obj_memo, NEWLANG);
         data.obj_memo = desc_translate
           ? desc_translate[0].toUpperCase() + desc_translate.slice(1)
           : "";
       }
 
       if (data.obj_info) {
-        let desc_translate = translate(data.obj_info);
+        let desc_translate = translate(data.obj_info, NEWLANG);
         data.obj_info = desc_translate
           ? desc_translate[0].toUpperCase() + desc_translate.slice(1)
           : "";
