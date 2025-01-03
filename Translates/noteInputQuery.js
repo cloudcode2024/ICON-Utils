@@ -1,5 +1,5 @@
 /**
- *  Traduce todos los renders al array de idiomas definidos
+ *  Traduce todos los input query notes al array de idiomas definidos
  */
 const ARRAYNEWLANGS = ["en", "ca", "pt", "fr", "it", "de"];
 
@@ -16,6 +16,7 @@ function translate(data, newLang) {
 }
 
 ARRAYNEWLANGS.forEach((NEWLANG) => {
+  console.log(`-----------------${NEWLANG}-----------------`);
   
   let mRsDetalle = Ax.db.executeQuery(`
         SELECT '${NEWLANG}' locale_tar,

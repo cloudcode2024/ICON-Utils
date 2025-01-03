@@ -16,6 +16,7 @@ function translate(data, newLang) {
 }
 
 ARRAYNEWLANGS.forEach((NEWLANG) => {
+  console.log(`-----------------${NEWLANG}-----------------`);
   
   let mRsDetalle = Ax.db.executeQuery(`
         SELECT '${NEWLANG}' locale_tar, 

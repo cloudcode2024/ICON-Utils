@@ -1,5 +1,5 @@
 /**
- *  Traduce todos los check information al array de idiomas definidos
+ *  Traduce todos los alerts al array de idiomas definidos
  */
 const ARRNEWLAN = ["en", "ca", "pt", "fr", "it", "de"];
 
@@ -16,6 +16,7 @@ function translate(data, newlang){
 }
 
 ARRNEWLAN.forEach(NEWLANG =>{
+    console.log(`-----------------${NEWLANG}-----------------`);
     let mRsDetalle = Ax.db.executeQuery(`
         SELECT '${NEWLANG}' locale_tar, 
             alert.locale,
@@ -59,6 +60,3 @@ ARRNEWLAN.forEach(NEWLANG =>{
     })
 
 })
-
-
- 
