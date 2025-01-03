@@ -19,3 +19,7 @@ mTabdata.forEach((mRotabdata) => {
   if (!match) return;
   console.log(mRotabdata.tab_name);
 });
+
+
+I dont know how i install vim in this mac,.
+
